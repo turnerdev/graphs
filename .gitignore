@@ -1,0 +1,7 @@
+.go
+.git
+.envrc
+.vscode
+workspace.*
+graphs
+*.svg
