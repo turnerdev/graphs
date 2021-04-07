@@ -41,11 +41,21 @@ func (v Vertex) Outdegree() int {
 	return len(v.out)
 }
 
+func (v Vertex) IsSource() bool {
+	return v.Indegree() == 0
+}
+
+func (v Vertex) IsSink() bool {
+	return v.Outdegree() == 0
+}
+
 // Graph structures
 type Graph struct {
 	vertices      map[int]*Vertex
 	adjacencyList map[int][]int
 	reversed      map[int][]int
+	sinks         map[int]bool
+	sources       map[int]bool
 }
 
 // NewGraph constructs a new Graph instance
@@ -54,6 +64,8 @@ func NewGraph() *Graph {
 		vertices:      make(map[int]*Vertex),
 		adjacencyList: make(map[int][]int),
 		reversed:      make(map[int][]int),
+		sinks:         make(map[int]bool),
+		sources:       make(map[int]bool),
 	}
 }
 
@@ -115,14 +127,42 @@ func (g Graph) AddEdge(v int, w int) *Edge {
 	vertexA, ok := g.vertices[v]
 	if !ok {
 		vertexA = g.AddVertex(v)
+		g.sources[v] = true
+	} else if vertexA.IsSink() {
+		delete(g.sinks, v)
 	}
 	vertexB, ok := g.vertices[w]
 	if !ok {
 		vertexB = g.AddVertex(w)
+		g.sinks[w] = true
+	} else if vertexB.IsSource() {
+		delete(g.sources, w)
 	}
 	edge := vertexA.addEdge(vertexB)
 
 	g.adjacencyList[v] = append(g.adjacencyList[v], w)
 
 	return edge
+}
+
+// Sources returns a list of vertices with an indegree of 0
+func (g Graph) Sources() []*Vertex {
+	keys := make([]*Vertex, len(g.sources))
+	i := 0
+	for k := range g.sources {
+		keys[i] = g.vertices[k]
+		i++
+	}
+	return keys
+}
+
+// Sinks returns a list of vertices with an outdegree of 0
+func (g Graph) Sinks() []*Vertex {
+	keys := make([]*Vertex, len(g.sources)+1)
+	i := 0
+	for k := range g.sinks {
+		keys[i] = g.vertices[k]
+		i++
+	}
+	return keys
 }

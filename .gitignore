@@ -5,3 +5,5 @@
 workspace.*
 graphs
 *.svg
+www
+www/*
