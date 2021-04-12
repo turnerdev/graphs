@@ -1,29 +1,62 @@
 package core
 
+import (
+	"container/list"
+	"errors"
+	"fmt"
+	"math"
+)
+
 // Edge structure
 type Edge struct {
 	v        *Vertex
 	w        *Vertex
 	capacity int
 	flow     int
-	weight   int
+	weight   float32
+}
+
+// SetWeight sets the weight of a given edge
+func (e *Edge) SetWeight(weight float32) {
+	e.weight = weight
+}
+
+// SetCapacity sets the capacity of a flow network arc
+func (e *Edge) SetCapacity(flow int) *Edge {
+	e.capacity = flow
+	return e
+}
+
+// SetFlow sets the flow of a flow network arc
+func (e *Edge) SetFlow(flow int) *Edge {
+	e.flow = flow
+	return e
 }
 
 // Vertex structure
 type Vertex struct {
 	id  int
-	in  []*Edge
-	out []*Edge
+	in  map[int]*Edge
+	out map[int]*Edge
+}
+
+func (v *Vertex) getEdge(id int) (*Edge, error) {
+	if edge, ok := v.out[id]; ok {
+		return edge, nil
+	}
+	return nil, errors.New("No edge found")
 }
 
 func (v *Vertex) addEdge(w *Vertex) *Edge {
-	edge := &Edge{
-		v: v,
-		w: w,
+	if _, ok := v.out[w.id]; !ok {
+		edge := &Edge{
+			v: v,
+			w: w,
+		}
+		v.out[w.id] = edge
+		w.in[v.id] = edge
 	}
-	v.out = append(v.out, edge)
-	w.in = append(w.in, edge)
-	return edge
+	return v.out[w.id]
 }
 
 // Degree (or valency) is the number of edges that are incident to the Vertex
@@ -109,8 +142,8 @@ func (g Graph) IsCyclic() bool {
 func (g Graph) AddVertex(v int) *Vertex {
 	vertex := &Vertex{
 		id:  v,
-		in:  make([]*Edge, 0),
-		out: make([]*Edge, 0),
+		in:  make(map[int]*Edge),
+		out: make(map[int]*Edge),
 	}
 	g.vertices[v] = vertex
 	g.adjacencyList[v] = make([]int, 0)
@@ -166,3 +199,121 @@ func (g Graph) Sinks() []*Vertex {
 	}
 	return keys
 }
+
+func (g *Graph) Search(strategy SearchStrategy) {
+	result := strategy.Search(g.Sources()[0], func(v *Vertex) bool {
+		return false
+	})
+
+	fmt.Println(result)
+}
+
+type SearchResult struct {
+	paths []*Vertex
+}
+
+type SearchStrategy interface {
+	Search(g *Vertex, fn func(*Vertex) bool) SearchResult
+}
+
+type BFSStrategy struct{}
+
+func (s BFSStrategy) Search(v *Vertex, fn func(v *Vertex) bool) SearchResult {
+	// visited := make([]int)
+	// queue = []*Vertex{v}
+
+	// for len(queue) > 0 {
+	// u := queue[]
+	// }
+
+	return SearchResult{
+		// paths:
+	}
+}
+
+func ResidualGraph(g *Graph) *Graph {
+	r := NewGraph()
+	for _, v := range g.vertices {
+		for _, e := range v.out {
+			// Set residual capacity on forward edge by subtracting flow from capacity
+			r.AddEdge(v.id, e.w.id).SetCapacity(e.capacity - e.flow)
+			if e.flow > 0 {
+				// Set back edge
+				r.AddEdge(e.w.id, v.id).SetCapacity(e.flow)
+			}
+		}
+	}
+	return r
+}
+
+// FordFulkerson algorithm returns the max flow of a given graph
+func FordFulkerson(g *Graph) int {
+	r := ResidualGraph(g)
+
+	// TODO: Use synthetic source/sink where multiple exist
+	s := r.GetVertex(g.Sources()[0].id)
+	t := r.GetVertex(g.Sinks()[0].id)
+
+	bfs := func(r *Graph, s *Vertex, t *Vertex) ([]int, bool) {
+		visited := make(map[int]*Vertex)
+		queue := list.New()
+		queue.PushBack(s)
+		visited[s.id] = s
+		parent := make([]int, len(r.vertices))
+
+		for queue.Len() > 0 {
+			el := queue.Front()
+			queue.Remove(el)
+			v := el.Value.(*Vertex)
+
+			for id, edge := range v.out {
+				if _, ok := visited[id]; !ok && edge.capacity-edge.flow > 0 {
+					parent[edge.w.id] = v.id
+					if edge.w == t {
+						return parent, false
+					}
+					queue.PushBack(edge.w)
+					visited[edge.w.id] = edge.w
+				}
+			}
+		}
+
+		return nil, true
+	}
+
+	bfsIterator := func(r *Graph, v *Vertex, t *Vertex, f func([]int)) {
+		for {
+			results, done := bfs(r, v, t)
+			if done {
+				return
+			}
+			f(results)
+		}
+	}
+
+	maxFlow := 0
+
+	// Iterate over augmenting paths using breadth first search
+	bfsIterator(r, s, t, func(path []int) {
+		pathFlow := math.MaxInt32
+
+		for w := t.id; w != s.id; w = path[w] {
+			edge, _ := r.GetVertex(path[w]).getEdge(w)
+			if pathFlow > edge.capacity-edge.flow {
+				pathFlow = edge.capacity - edge.flow
+			}
+		}
+		for w := t.id; w != s.id; w = path[w] {
+			edge, _ := r.GetVertex(path[w]).getEdge(w)
+			edge.flow += pathFlow
+			edge.w.addEdge(edge.v).flow += pathFlow
+		}
+		maxFlow += pathFlow
+	})
+
+	return maxFlow
+}
+
+type DFSStrategy struct{}
+
+// type queue struct

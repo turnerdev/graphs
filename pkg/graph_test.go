@@ -81,3 +81,42 @@ func TestDegree(t *testing.T) {
 	})
 
 }
+
+func TestResidualGraph(t *testing.T) {
+	g := NewGraph()
+	g.AddEdge(0, 1).SetFlow(1).SetCapacity(3)
+	g.AddEdge(0, 2).SetFlow(2).SetCapacity(2)
+	g.AddEdge(2, 1).SetFlow(1).SetCapacity(3)
+	g.AddEdge(1, 3).SetFlow(2).SetCapacity(2)
+	g.AddEdge(3, 2).SetFlow(1).SetCapacity(1)
+	g.AddEdge(3, 4).SetFlow(1).SetCapacity(3)
+	g.AddEdge(3, 5).SetFlow(2).SetCapacity(3)
+	g.AddEdge(4, 5).SetFlow(1).SetCapacity(2)
+
+	r := ResidualGraph(g)
+
+	if r.GetVertex(0).out[1].capacity != 2 {
+		t.Errorf("Expected 2")
+	}
+
+	// TODO: implement getEdge(v, w) for more efficient testing
+}
+
+func TestFordFulkerson(t *testing.T) {
+	g := NewGraph()
+	g.AddEdge(0, 1).SetCapacity(11)
+	g.AddEdge(0, 2).SetCapacity(12)
+	g.AddEdge(2, 1).SetCapacity(1)
+	g.AddEdge(1, 3).SetCapacity(12)
+	g.AddEdge(2, 4).SetCapacity(11)
+	g.AddEdge(4, 3).SetCapacity(7)
+	g.AddEdge(3, 5).SetCapacity(19)
+	g.AddEdge(4, 5).SetCapacity(4)
+
+	want := 23
+	got := FordFulkerson(g)
+
+	if got != want {
+		t.Errorf("%d; expected %d", got, want)
+	}
+}
